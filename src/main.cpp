@@ -1,9 +1,13 @@
 #include <unicode/unistr.h>
+#include <unicode/normalizer2.h>
+#include <unicode/normlzr.h>
+#include <unicode/utypes.h>
 #include <string>
 #define FMT_HEADER_ONLY
 #include <fmt/format.h>
 #include "edit_distance.hpp"
 #include "test_data.hpp"
+#include <stdexcept>
 
 namespace config {
 constexpr auto validity_threshold = 0.7;
@@ -35,7 +39,6 @@ struct Transliterate {
 	};
 	std::string process(const std::string& data) {
 		icu::UnicodeString us(data.c_str(), "UTF-8");
-		us.toLower();
 		for(auto i = 0u; i < letters_size; ++i) {
 			us.findAndReplace(russian[i], english[i]);
 		}
@@ -50,7 +53,6 @@ struct Reduce {
 	friend StrategyProcessor<Reduce>;
 	std::string process(const std::string& data) {
 		icu::UnicodeString us(data.c_str(), "UTF-8");
-		us.toLower();
 		us.findAndReplace(".", "");
 		us.findAndReplace(",", "");
 		us.findAndReplace("-", " ");
@@ -91,6 +93,32 @@ struct Phonemize {
 	}
 };
 
+struct Normalize {
+	private:
+	friend StrategyProcessor<Normalize>;
+	std::string process(const std::string& data) {
+#if 0
+		icu::UnicodeString us(data.c_str(), "UTF-8");
+		icu::UnicodeString ds;
+		//icu::Normalizer::normalize(us, UNORM_DEFAULT, 0, ds, err);
+		UErrorCode err = U_ZERO_ERROR;
+		auto f = icu::Normalizer2::getNFCInstance(err);
+		//std::printf("error code %04X\n", err);
+		if(err <= U_ZERO_ERROR) {
+			//fmt::print("okay\n");
+			f->normalize(us, ds, err);
+			std::string result;
+			ds.toUTF8String(result);
+			return result;
+		} else {
+			throw 1;
+		}
+#else
+		return data;
+#endif
+	}
+};
+
 double calculate_similarity(const std::string& a, const std::string& b) {
 	auto distance = utility::levenshtein_distance(a, b, 1, 0, 1);
 	auto length = a.size() > b.size() ? a.size() : b.size();
@@ -121,13 +149,26 @@ double fuzzy_compare(const std::string& a, const std::string& b) {
 	auto data2 = StrategyProcessor<Lower>{}.process(start_data2);
 	data1 = StrategyProcessor<Reduce>{}.process(data1);
 	data2 = StrategyProcessor<Reduce>{}.process(data2);
+	data1 = StrategyProcessor<Normalize>{}.process(data1);
+	data2 = StrategyProcessor<Normalize>{}.process(data2);
 	data1 = StrategyProcessor<Phonemize>{}.process(data1);
 	data2 = StrategyProcessor<Phonemize>{}.process(data2);
 	data1 = StrategyProcessor<Transliterate>{}.process(data1);
 	data2 = StrategyProcessor<Transliterate>{}.process(data2);
 	auto sim1 = calculate_similarity(data1.a, data2.a);
 	auto sim2 = calculate_similarity(data1.b, data2.b);
-	if(not check_validity(sim1)|| not check_validity(sim2)) {
+	if(not check_validity(sim1) || not check_validity(sim2)) {
+		std::swap(data1.a, data1.b);
+		sim1 = calculate_similarity(data1.a, data2.a);
+		sim2 = calculate_similarity(data1.b, data2.b);
+	}
+	if(not check_validity(sim1) || not check_validity(sim2)) {
+		std::swap(data1.a, data1.b);
+		data1 = StrategyProcessor<Swap>{}.process(data1);
+		sim1 = calculate_similarity(data1.a, data2.a);
+		sim2 = calculate_similarity(data1.b, data2.b);
+	}
+	if(not check_validity(sim1) || not check_validity(sim2)) {
 		data1 = StrategyProcessor<Swap>{}.process(data1);
 		sim1 = calculate_similarity(data1.a, data2.a);
 		sim2 = calculate_similarity(data1.b, data2.b);
