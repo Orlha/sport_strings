@@ -17,7 +17,6 @@ const static DataBlock correct_inputs[] {
 	{ "Igor Akimov vs Yan Zakharov", "Akimov, Igor vs Zakharov, Yan" },
 	{ "Игорь Акимов (Укр) vs Ян Захаров (Укр)", "Akimov, Igor vs Zakharov, Yan" },
 	{ "sergei moroz vs some weird string shenagians", "сергей мороз vs сам веирд стринг шенагианс" },
-	{ "analysis shmanalysis vs hello how are you", "анализис шманалисис vs хеллоу хай а ю" },
 	{ "shakhtar Donetsk vs Monaco", "Шахтер vs Монако"},
 	{ "Genclerbirliyi Sumqayit vs Juventud de Las Piedras", "Хувентуд Лас-Пьедрас vs Гянджларбирлийи"},
 	{ "Genclerbirliyi Sumqayit vs Juventud de Las Piedras", "Гянджларбирлийи vs Хувентуд Лас-Пьедрас"},

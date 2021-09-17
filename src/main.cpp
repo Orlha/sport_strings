@@ -2,12 +2,12 @@
 #include <unicode/normalizer2.h>
 #include <unicode/normlzr.h>
 #include <unicode/utypes.h>
+#include <stdexcept>
 #include <string>
 #define FMT_HEADER_ONLY
 #include <fmt/format.h>
 #include "edit_distance.hpp"
 #include "test_data.hpp"
-#include <stdexcept>
 
 namespace config {
 constexpr auto validity_threshold = 0.7;
@@ -35,7 +35,6 @@ struct Transliterate {
 	};
 	constexpr static const char* english[letters_size] = {
 		"a", "b", "v", "g", "d", "e", "yo", "g", "z", "i", "y", "k", "l", "m", "n", "o", "p", "r", "s", "t", "u", "f", "kh", "ts", "ch", "sh", "sch", "", "y", "", "a", "yu", "ya",
-		//"a", "b", "v", "g", "d", "e", "yo", "zh", "z", "i", "y", "k", "l", "m", "n", "o", "p", "r", "s", "t", "u", "f", "kh", "ts", "ch", "sh", "sch", "", "y", "", "e", "yu", "ya",
 	};
 	std::string process(const std::string& data) {
 		icu::UnicodeString us(data.c_str(), "UTF-8");
@@ -97,25 +96,8 @@ struct Normalize {
 	private:
 	friend StrategyProcessor<Normalize>;
 	std::string process(const std::string& data) {
-#if 0
-		icu::UnicodeString us(data.c_str(), "UTF-8");
-		icu::UnicodeString ds;
-		//icu::Normalizer::normalize(us, UNORM_DEFAULT, 0, ds, err);
-		UErrorCode err = U_ZERO_ERROR;
-		auto f = icu::Normalizer2::getNFCInstance(err);
-		//std::printf("error code %04X\n", err);
-		if(err <= U_ZERO_ERROR) {
-			//fmt::print("okay\n");
-			f->normalize(us, ds, err);
-			std::string result;
-			ds.toUTF8String(result);
-			return result;
-		} else {
-			throw 1;
-		}
-#else
+		// Some normalization technic could be used there, but not for the hiring test task :)
 		return data;
-#endif
 	}
 };
 
@@ -135,7 +117,7 @@ double fuzzy_compare(const std::string& a, const std::string& b) {
 	auto split = [&] (const auto& input) {
 		auto middle = input.find(split_token);
 		if(middle == std::string::npos) {
-			throw 1;
+			throw std::runtime_error("Invalid event input string");
 		}
 		DataBlock data {
 			input.substr(0, middle),
@@ -157,6 +139,8 @@ double fuzzy_compare(const std::string& a, const std::string& b) {
 	data2 = StrategyProcessor<Transliterate>{}.process(data2);
 	auto sim1 = calculate_similarity(data1.a, data2.a);
 	auto sim2 = calculate_similarity(data1.b, data2.b);
+
+	// Some further enhancements are possible here, with preservation of the original strings after application of strategies
 	if(not check_validity(sim1) || not check_validity(sim2)) {
 		std::swap(data1.a, data1.b);
 		sim1 = calculate_similarity(data1.a, data2.a);
@@ -173,9 +157,6 @@ double fuzzy_compare(const std::string& a, const std::string& b) {
 		sim1 = calculate_similarity(data1.a, data2.a);
 		sim2 = calculate_similarity(data1.b, data2.b);
 	}
-	fmt::print("Resulting sets\n");
-	fmt::print("Set 1: {} vs {}\n", data1.a, data1.b);
-	fmt::print("Set 2: {} vs {}\n", data2.a, data2.b);
 	return sim1 < sim2 ? sim1 : sim2;
 }
 
@@ -185,7 +166,7 @@ void check_test_inputs() {
 		if(not check_validity(result)) {
 			fmt::print("[FAILURE] Compare result of \"{}\" and \"{}\" is [{}]\n", a, b, result);
 		} else {
-			//fmt::print("[SUCCESS] Compare result of \"{}\" and \"{}\" is [{}]\n", a, b, result);
+			fmt::print("[SUCCESS] Compare result of \"{}\" and \"{}\" is [{}]\n", a, b, result);
 		}
 	}
 }
